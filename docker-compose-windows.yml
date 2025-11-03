@@ -1,0 +1,115 @@
+# ============================================================================
+# Docker Compose for Sports Tracker Application (Windows/Linux/Mac)
+# ============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # KAFKA BROKER (Apache Kafka 4.0.1 in KRaft mode - without Zookeeper)
+  # --------------------------------------------------------------------------
+  kafka:
+    image: apache/kafka:4.0.1              # Official Apache Kafka image
+    container_name: kafka                  # Fixed container name
+    hostname: kafka                        # DNS name inside the Docker network
+
+    # PORTS:
+    # 9092  - for connections from the host (Windows/Mac/Linux)
+    # 29092 - for connections from other Docker containers
+    ports:
+      - "9092:9092"                        # Host -> Container
+      - "29092:29092"                      # Docker network port
+
+    environment:
+      # --- MAIN KRAFT SETTINGS (no Zookeeper) ---
+      KAFKA_NODE_ID: 1                     # Unique node ID within the cluster
+      KAFKA_PROCESS_ROLES: broker,controller  # Roles: broker (data) + controller (management)
+
+      # --- LISTENERS: on which addresses Kafka listens ---
+      # PLAINTEXT_HOST - for connections from host (e.g., Spring Boot on Windows)
+      # PLAINTEXT      - for connections from other Docker containers (Kafka UI)
+      # CONTROLLER     - for internal KRaft controller communication
+      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+
+      # --- ADVERTISED_LISTENERS: addresses Kafka reports to clients ---
+      # localhost:9092 - for clients running on the host
+      # kafka:29092    - for clients running inside Docker network
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT://kafka:29092
+
+      # --- SECURITY PROTOCOL MAP: defines protocol type for each listener ---
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+
+      # --- CONTROLLER SETTINGS ---
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER      # Listener name for KRaft controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093     # Controller quorum voters address
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT      # Listener used for broker-to-broker communication
+
+      # --- REPLICATION SETTINGS (for a single broker – always 1) ---
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1        # Replication factor for offsets topic
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1 # Replication for transaction log
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1           # Minimum in-sync replicas
+
+      # --- PERFORMANCE SETTINGS ---
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0        # Initial rebalance delay (0 = no delay)
+      KAFKA_NUM_PARTITIONS: 3                          # Default number of partitions for new topics
+
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+
+    # VOLUMES: persistent data storage for Kafka
+    volumes:
+      - kafka_data:/var/lib/kafka/data     # Data will persist after container restart
+
+    # NETWORK: attach to user-defined Docker network
+    networks:
+      - kafka-network
+
+    # RESTART POLICY: automatically restart on failure
+    restart: unless-stopped                # Restart unless manually stopped
+
+    # HEALTHCHECK: verify Kafka is up and responding
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 30s                        # Check every 30 seconds
+      timeout: 20s                         # Timeout for each check
+      retries: 3                           # Mark as unhealthy after 3 failed checks
+      start_period: 40s                    # Delay before the first healthcheck
+
+  # --------------------------------------------------------------------------
+  # KAFKA UI (Web interface for Kafka management)
+  # --------------------------------------------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest   # Latest version of Kafka UI
+    container_name: kafka-ui               # Fixed container name
+
+    # DEPENDS_ON: wait until Kafka is healthy before starting
+    depends_on:
+      kafka:
+        condition: service_healthy         # Start only when Kafka is healthy
+
+    # PORTS: web interface available on port 8090
+    ports:
+      - "8090:8080"                        # Host:8090 -> Container:8080
+
+    environment:
+      # Kafka cluster configuration
+      KAFKA_CLUSTERS_0_NAME: local         # Display name of the cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092  # Kafka address inside Docker network
+      DYNAMIC_CONFIG_ENABLED: 'true'       # Enable dynamic configuration
+
+    networks:
+      - kafka-network                      # Same network as Kafka
+
+    restart: unless-stopped                # Automatically restart on failure
+
+# ==============================================================================
+# VOLUMES: persistent storage
+# ==============================================================================
+volumes:
+  kafka_data:                              # Named volume for Kafka data
+    driver: local                          # Local host storage
+
+# ==============================================================================
+# NETWORKS: isolated network for services
+# ==============================================================================
+networks:
+  kafka-network:                           # User-defined network
+    name: kafka-network                    # Explicit network name (no folder prefix)
+    driver: bridge                         # Standard Docker bridge driver
