@@ -26,8 +26,12 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
     implementation 'org.springframework.boot:spring-boot-starter-aop'
 
@@ -35,6 +39,25 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
 
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+}
 
+tasks.named('test') {
+    useJUnitPlatform()
+    jvmArgs = [
+            '--enable-native-access=ALL-UNNAMED'
+    ]
+}
+
+// ========================================
+// JVM Arguments for Java 25 Compatibility
+// ========================================
+tasks.named('bootRun') {
+    jvmArgs = [
+            // Fix native library warnings (zstd, snappy, etc.)
+            '--enable-native-access=ALL-UNNAMED'
+    ]
 }

@@ -1,9 +1,9 @@
 package com.spgroup.config;
 
-import lombok.*;
+import lombok.Data;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 @ConfigurationProperties(prefix = "kafka")
@@ -11,9 +11,9 @@ import org.springframework.beans.factory.annotation.Value;
 public class KafkaClientConfiguration {
 
     @Value(value = "${kafka.bootstrap-servers}")
-    private String producerKeySerializer;
-    @Value(value = "${kafka.producer.key-serializer}")
     private String bootstrapServers;
+    @Value(value = "${kafka.producer.key-serializer}")
+    private String producerKeySerializer;
     @Value(value = "${kafka.producer.value-serializer}")
     private String producerValueSerializer;
     @Value(value = "${kafka.producer.acks}")
@@ -24,7 +24,7 @@ public class KafkaClientConfiguration {
     @Value(value = "${kafka.topic}")
     private String topic;
     @Value(value = "${kafka.retry-attempts}")
-    private String retryAttempts;
+    private Integer retryAttempts;
     @Value(value = "${kafka.partitions}")
     private Integer partitions;
     @Value(value = "${kafka.replicas}")

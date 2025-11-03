@@ -2,6 +2,9 @@ spring:
   application:
     name: sports-tracker
 
+server:
+  port: 8080
+
 kafka:
   bootstrap-servers: localhost:9092
   producer:
@@ -13,3 +16,21 @@ kafka:
   partitions: 1
   replicas: 1
   retry-attempts: 3
+
+external-api:
+  url: http://localhost:8080/mock/events/data
+  timeout: 5s
+  retry-attempts: 3
+
+app:
+  polling:
+    interval: 10000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
