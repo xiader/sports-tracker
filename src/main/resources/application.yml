@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: sports-tracker
+
+kafka:
+  bootstrap-servers: localhost:9092
+  producer:
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    acks: all
+    retries: 3
+  topic: sports-events
+  partitions: 1
+  replicas: 1
+  retry-attempts: 3
